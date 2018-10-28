@@ -1,8 +1,8 @@
-import Offspring from "./Offspring";
-import InnovationNumber from "./InnovationNumber";
-import NodeCountGlobal from "./NodeCountGlobal";
-import Node from "./Node";
-import Connection from "./Connection";
+const Offspring = require("./Offspring");
+const InnovationNumber = require("./InnovationCountGlobal");
+const NodeCountGlobal = require("./NodeCountGlobal");
+const Node = require("./Node");
+const Connection = require("./Connection");
 const Config = require("./Config");
 
 class Mutator {
@@ -14,7 +14,8 @@ class Mutator {
     //Add connection takes place in-place.
     addRandomConnection(offspring) {
         if (!offspring.graph.isFull()) {
-            let availableConnections = offspring.graph.getAvailableConnections;
+            let availableConnections = offspring.graph.getAvailableConnections();
+            if (availableConnections.length == 0) return;
             let index = Math.floor(Math.random() * availableConnections.length);
             let connectionNodes = availableConnections[index];
             let connection = new Connection(
@@ -37,8 +38,8 @@ class Mutator {
      */
     addRandomNode(offspring) {
         let initialConnection = offspring.graph.getRandomConnection();
-        let initialInNode = randomConnection.inNode;
-        let initialOutNode = randomConnection.outNode;
+        let initialInNode = initialConnection.inNode;
+        let initialOutNode = initialConnection.outNode;
         //If they are in sibling layers, you must create a new layer and push all
         //Of the layers after that forward one.
         if (initialOutNode.layer - initialInNode.layer == 1) {
@@ -62,15 +63,16 @@ class Mutator {
     perturbWeights(offspring) {
         offspring.graph.connections.forEach((connection) => {
             if (Math.random() <= Config.perturb_weight_chance) {
-                perturb_direction = Math.random() > 0.5 ? 1 : -1;
+                let perturb_direction = Math.random() > 0.5 ? 1 : -1;
                 connection.weight += perturb_direction * Config.perturb_weight_amount;
             }
         })
     }
 
 
-    mutateOffspring(offsprings) {
+    mutateInPlace(offsprings) {
         offsprings.forEach((offspring) => {
+            this.perturbWeights(offspring);
             if (Math.random() <= Config.add_connection_chance) {
                 this.addRandomConnection(offspring);
             }

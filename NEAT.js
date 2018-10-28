@@ -1,6 +1,5 @@
-import Offspring from "./Offspring";
-import Generation from "./Generation";
-
+const Offspring = require("./Offspring");
+const Generation = require("./Generation");
 const Graph = require("./Graph");
 const Node = require("./Node");
 const InnovationNumber = require("./InnovationCountGlobal");
@@ -8,6 +7,9 @@ const NodeCount = require("./NodeCountGlobal");
 const Connection = require("./Connection");
 const Mutator = require("./Mutator");
 const Reproducer = require("./Reproducer");
+const Config = require("./Config");
+const Util = require("./Util");
+const FitnessEvaluator = require("./FitnessEvaluator");
 
 class NEAT {
     constructor(inSize, outSize, fitnessCalcFn) {
@@ -15,11 +17,24 @@ class NEAT {
         this.outSize = outSize;
         this.mutator = new Mutator();
         this.reproducer = new Reproducer();
-        setupExitHandlers();
+        this.fitnessEvaluator = new FitnessEvaluator(fitnessCalcFn);
+        this.setupExitHandlers();
     }
 
     setupExitHandlers() {
         //TODO
+    }
+
+    run() {
+        let currentGen = this.createFirstGeneration();
+        for (let i=0; i<Config.num_generations; i++) {
+            this.mutator.mutateInPlace(currentGen.offspring);
+            this.fitnessEvaluator.assignFitnessValues(currentGen.offspring);
+            currentGen.storeStatistics();
+            let children = this.reproducer.produceChildren(currentGen.offspring);        
+            currentGen = new Generation(children);
+        }
+        return currentGen;
     }
 
     createFirstGeneration() {
@@ -49,10 +64,10 @@ class NEAT {
             })
         })
 
-        offspring1 = new Offspring(offspring1_graph,fitnessCalcFn);
-        offspring2 = new Offspring(offspring2_graph,fitnessCalcFn);
+        let offspring1 = new Offspring(offspring1_graph);
+        let offspring2 = new Offspring(offspring2_graph);
 
-        gen_x = new Generation([offspring1, offspring2],this.mutator, this.reproducer);
+        let gen_x = new Generation([offspring1, offspring2]);
         return gen_x;
     }
 
@@ -61,4 +76,4 @@ class NEAT {
     }
 }
 
-export default NEAT;
+module.exports = NEAT;

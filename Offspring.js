@@ -1,9 +1,8 @@
 class Offspring {
 
-    constructor(graph, calcFitness) {
+    constructor(graph,fitness) {
         this.graph = graph;
-        this.calcFitness = calcFitness();
-        this.fitness = calcFitness(this.graph);
+        this.fitness = fitness;
     }
 }
 

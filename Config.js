@@ -5,5 +5,6 @@ module.exports = {
     add_connection_chance: 0.2,
     add_node_chance: 0.2,
     add_connction_weight: 1,
-    add_node_weight: 1
+    add_node_weight: 1,
+    num_generations: 20
 }

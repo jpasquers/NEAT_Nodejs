@@ -1,82 +1,108 @@
-
-
-class Graph {
+import { NEATNode } from "./nodes/Node";
+import { Connection } from "./Connection";
+import { NEATInNode } from "./nodes/InNode";
+import { NEATOutNode } from "./nodes/OutNode";
+import { NEATHiddenNode } from "./nodes/HiddenNode";
+/**
+ * Core class for a directed graph used in Neuro Evolution
+ * Makes no assumptions about the shape of the graph.
+ * Allows for layers of varying size, and for Connections that skip layers.
+ * For example, node1->node2->node3 and node1->node3 are both viable connections
+ * In the same graph.
+ */
+export class Graph {
+    nodes: NEATNode[];
+    connections: Connection[];
     constructor() {
-        this.allNodes = [];
+        this.nodes = [];
         this.connections = [];
-        this.inNodes = [];
-        this.hiddenNodes = [];
-        this.outNodes = [];
     }
 
     /**
-     * Add an input node to the graph.
-     * @arg {Node} node - The node to add
+     * Add a node to the graph.
+     * @arg {NEATNode} node - The node to add
      */
-    addInNode(node) {
-        this.inNodes.push(node);
-        this.allNodes.push(node);
-    }
-    
-    /**
-     * Add an output node to the graph
-     * @arg {Node} node - The node to add
-     */
-    addOutNode(node) {
-        this.outNodes.push(node);
-        this.allNodes.push(node);
+    addNode(node: NEATNode) {
+        this.nodes.push(node);
     }
 
     /**
-     * add a node that is part of some hidden layer
-     * @arg {Node} - the node to add.
+     * Grabs all nodes qualifying as 'input nodes'
+     * @returns {NEATInNode[]} - list of input nodes.
      */
-    addHiddenNode(node) {
-        this.hiddenNodes.push(node);
-        this.allNodes.push(node);
+    getInNodes() {
+        return this.nodes.filter((node:NEATNode) => {
+            return node instanceof NEATInNode;
+        })
+    }
+
+    /**
+     * Grabs all nodes qualifying as 'output nodes'
+     * @returns {NEATOutNode[]} - list of output nodes.
+     */
+    getOutNodes() {
+        return this.nodes.filter((node:NEATNode) => {
+            return node instanceof NEATOutNode;
+        })
+    }
+
+    /**
+     * Grabs all nodes qualifying as 'hidden nodes'
+     * @returns {NEATHiddenNode[]} - list of hidden nodes.
+     */
+    getHiddenNodes() {
+        return this.nodes.filter((node:NEATNode) => {
+            return node instanceof NEATHiddenNode;
+        });
+    }
+
+    hasNode(id:number) {
+        return this.nodes.filter((node:NEATNode) => {
+            return node.id == id;
+        }).length > 0;
     }
 
     /**
      * Check if a nodelist contains a node, by comparing node IDs.
-     * @arg {Node[]} nodelist - The nodelist to check
-     * @arg {Node} checkNode - the node to check existance of in the nodelist.
+     * @arg {NEATNode[]} nodelist - The nodelist to check
+     * @arg {NEATNode} checkNode - the node to check existance of in the nodelist.
      * @returns {Boolean} - Whether or not the nodelist contains the node.
      */
-    nodeListContainsNode(nodelist,checkNode) {
+    nodeListContainsNode(nodelist:NEATNode[],checkNode:NEATNode) {
         return nodelist.filter((node) => node.id == checkNode.id).length > 0;
     }
 
     /**
      * Finds all nodes in a layer greater than the layer of the current node.
      * These are nodes that are 'downstream' on the graph.
-     * @arg {Node} inNode - The node from which to find downstream nodes
-     * @returns {Node[]} - the downstream nodes.
+     * @arg {NEATNode} inNode - The node from which to find downstream nodes
+     * @returns {NEATNode[]} - the downstream nodes.
      */
-    getDownstreamNodes(inNode) {
-        return this.allNodes.filter((node) => node.layer > inNode.layer);
+    getDownstreamNodes(inNode:NEATNode) {
+        return this.nodes.filter((node) => node.layer > inNode.layer);
     }
 
     /**
      * Find a node in the graph by id
-     * @arg {Int} id - The id
-     * @returns {Node} the node, or null if it doesn't exist.
+     * @arg {Number} id - The id
+     * @returns {NEATNode} the node, or null if it doesn't exist.
      */
-    getNode(id) {
-        let match = this.allNodes.filter((node) => node.id == id);
+    getNode(id: Number) {
+        let match = this.nodes.filter((node) => node.id == id);
         if (match.length == 1) return match[0];
         else return null;
     }
 
     /**
      * Finds all connections whose inNode is the given node.
-     * @arg {Node} inNode - The node to find connections for.
+     * @arg {NEATNode} fromNode - The node to find connections for.
      * @returns {Connection[]} - All connections coming from that node.
      */
-    getOutboundConnections(inNode) {
+    getOutboundConnections(fromNode:NEATNode) {
         let outboundConnections = [];
-        this.allNodes.forEach((node) => {
-            if (this.connectionExists(inNode,node)) {
-                outboundConnections.push(this.getConnectionByNodes(inNode,node));
+        this.nodes.forEach((node) => {
+            if (this.connectionExists(fromNode,node)) {
+                outboundConnections.push(this.getConnectionByNodes(fromNode,node));
             }
         })
         return outboundConnections;
@@ -84,14 +110,14 @@ class Graph {
 
     /**
      * Finds all connections leading into a node
-     * @arg {Node} outNode - The node to find connections for.
+     * @arg {Node} toNode - The node to find connections for.
      * @returns {Connection[]} - All connections leading into that node.
      */
-    getInboundConnections(outNode) {
+    getInboundConnections(toNode:NEATNode) {
         let inboundConnections = [];
-        this.allNodes.forEach((node) => {
-            if (this.connectionExists(node,outNode)) {
-                inboundConnections.push(this.getConnectionByNodes(node,outNode));
+        this.nodes.forEach((node) => {
+            if (this.connectionExists(node,toNode)) {
+                inboundConnections.push(this.getConnectionByNodes(node,toNode));
             }
         })
         return inboundConnections;
@@ -102,25 +128,26 @@ class Graph {
      * Contributions to a node from multiple connections are additive.
      * Contributions are multiplied by the weight of the connection.
      * There is no current sigmoid/any other manipulation applied to the resulting sum.
-     * @arg {Int[]} inputs - The inputs to the graph, must match in size to this.inNodes
-     * @returns {Int[]} - The outputs of the graph, equal to the size of this.outNodes
+     * @arg {number[]} inputs - The inputs to the graph, must match in size to this.inNodes
+     * @returns {number[]} - The outputs of the graph, equal to the size of the output nodes.
      */
-    getOutput(inputs) {
-        if (inputs.length != this.inNodes.length) throw {
+    getOutput(inputs:number[]) {
+        let inputNodes = this.getInNodes();
+        if (inputs.length != inputNodes.length) throw {
             name: "Invalid Input",
             message: "Input size doesn't match number of input nodes on graph"
         }
 
         //Will map node Id's to current value.
         let values = {};
-        //list of innovationNumbers of connections that have been evaluated.
+        //list of ids of connections that have been evaluated.
         let evaluated = [];
         inputs.forEach((input, index) => {
             //These should map normally, but just in case.
-            values[this.inNodes[index].id] = input;
+            values[inputNodes[index].id] = input;
         })
 
-        let currentNodeSet = this.inNodes;
+        let currentNodeSet = inputNodes;
         let nextNodeSet = [];
         let stillPropogating = true;
         while (stillPropogating) {
@@ -136,13 +163,14 @@ class Graph {
                     else values[outBoundNode.id] = outBoundConnection.weight * values[inNode.id];
 
                     //mark connection as evaluated.
-                    evaluated.push(outBoundConnection.innovationNumber);
+                    evaluated.push(outBoundConnection.id);
 
                     //if all connections with that as an output node have been evaluated,
                     //Then that node is ready to be evaluated as an input node.
                     let readyToEvalute = true;
                     this.getInboundConnections(outBoundNode).forEach((conn) => {
-                        if (!evaluated.includes(conn.innovationNumber)) {
+
+                        if (!(evaluated.filter(a => a == conn.id).length > 0)) {
                             readyToEvalute = false;
                         }
                     })
@@ -160,13 +188,13 @@ class Graph {
             }
 
         }
-        return this.outNodes.map((outNode) => values[outNode.id]);
+        return this.getOutNodes().map((outNode) => values[outNode.id]);
     }
 
     /**
      * Searches for a connection with matching in and out nodes
-     * @arg {Node} inNode - The inNode of the connection
-     * @arg {Node} outNode - The outNode of the connection
+     * @arg {NEATNode} inNode - The inNode of the connection
+     * @arg {NEATNode} outNode - The outNode of the connection
      * @returns {Connection} - The matching connection, or null
      */
     getConnectionByNodes(inNode,outNode) {
@@ -178,13 +206,13 @@ class Graph {
     }
 
     /**
-     * Searches for a connection from its innovation number
-     * @arg {Int} innovNumber - The innovation number
+     * Searches for a connection from its gene counter
+     * @arg {Int} id - The id/gene counter
      * @returns {Connection} - The matching connection, or null
      */
-    getConnectionByInnovNumber(innovNumber) {
+    getConnectionById(id) {
         let matches = this.connections.filter((connection) => {
-            return connection.innovationNumber == innovNumber;
+            return connection.id == id;
         });
         if (matches.length > 0) return matches[0];
         else return null;
@@ -192,12 +220,12 @@ class Graph {
 
     /**
      * Evaluates whether a connection exists between two nodes
-     * @arg {Node} inNode - The inNode of the connection
-     * @arg {Node} outNode - The outNode of the connection
+     * @arg {NEATNode} inNode - The inNode of the connection
+     * @arg {NEATNode} outNode - The outNode of the connection
      * @returns {Boolean} - Whether or not the connection exists.
      */
     connectionExists(inNode,outNode) {
-        return this.getConnectionByNodes(inNode,outNode).length > 0;
+        return this.getConnectionByNodes(inNode,outNode) != null;
     }
 
     /**
@@ -206,7 +234,7 @@ class Graph {
      * @returns {Int} - The last layer
      */
     getMaxLayer() {
-        return Math.max(this.allNodes.map((node) => node.layer));
+        return Math.max(...this.nodes.map((node) => node.layer));
     }
 
     /**
@@ -215,7 +243,7 @@ class Graph {
      * @arg {Int} layer - The layer to create
      */
     createNewLayer(layer) {
-        this.allNodes.forEach((node) => {
+        this.nodes.forEach((node) => {
             if (node.layer >= layer) {
                 node.layer += 1;
             }
@@ -229,8 +257,9 @@ class Graph {
      * The higher layer is assigned to the node, as this corresponds which how the graph would be visualized.
      */
     redefineLayers() {
-        this.inNodes.forEach((node) => node.layer = 0);
-        let currentNodeSet = this.inNodes;
+        let inNodes = this.getInNodes();
+        inNodes.forEach((node) => node.layer = 0);
+        let currentNodeSet = inNodes;
         let nextNodeSet = [];
         let moreLayers = true;
         let currentLayer = 1;
@@ -240,6 +269,7 @@ class Graph {
                 outBoundConnections.forEach((outBoundConnection) => {
                     let outBoundNode = outBoundConnection.outNode;
                     outBoundNode.layer = currentLayer;
+                    //if the node isn't already going to be handled, handle it
                     if (nextNodeSet.filter((node) => outBoundNode.id == node.id).length == 0) {
                         nextNodeSet.push(outBoundNode);
                     }
@@ -268,12 +298,12 @@ class Graph {
 
     /**
      * Find all pairs of (node,downStreamNode) that don't have a connection
-     * @returns {inNode: Node, outNode: Node} - the potential node pair.
+     * @returns [{inNode: NEATNode, outNode: NEATNode}] - the potential node pairs.
      * 
      */
     getAvailableConnections() {
         let availableConnections = [];
-        this.allNodes.forEach((inNode) => {
+        this.nodes.forEach((inNode) => {
             let downStreamNodes = this.getDownstreamNodes(inNode);
             downStreamNodes.forEach((outNode) => {
                 if (!this.connectionExists(inNode,outNode)) {
@@ -300,18 +330,17 @@ class Graph {
      * And are involved in the connection.
      * @arg {Connection} connection - The connection to add.
      */
-    addConnection(connection) {
+    addConnection(connection:Connection) {
         this.connections.push(connection);
         //Any non existant node will be a hidden node. In and out nodes are predefined.
-        if (!this.nodeListContainsNode(this.allNodes,connection.inNode)) {
-            this.addHiddenNode(connection.inNode);
+        if (!this.nodeListContainsNode(this.nodes,connection.inNode)) {
+            this.addNode(connection.inNode);
         }
-        if (!this.nodeListContainsNode(this.allNodes, connection.outNode)) {
-            this.addHiddenNode(connection.outNode);
+        if (!this.nodeListContainsNode(this.nodes, connection.outNode)) {
+            this.addNode(connection.outNode);
         }
     }
 
 
 }
 
-module.exports = Graph;

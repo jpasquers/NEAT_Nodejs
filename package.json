@@ -1,8 +1,8 @@
 {
-  "name": "neat",
+  "name": "pasquej-neat",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Simple nodejs implementation of NEAT",
+  "main": "NEAT.js",
   "scripts": {
     "test": "jasmine"
   },

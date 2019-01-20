@@ -58,12 +58,13 @@ export class NEAT {
         //For first generation, the id's should be set manually so they are correct.
         //Past the first generation these should be handled automatically.
         let firstGenGraph = new Graph();
+        let currentId=0;
         for (let i=0; i<this.inSize; i++) {
-            let inNode = new NEATInNode(i, 0);
+            let inNode = new NEATInNode(currentId++, 0);
             firstGenGraph.addNode(inNode);
         }
-        for (let i=0; i<this.inSize; i++) {
-            let outNode = new NEATOutNode(i+this.inSize, 1);
+        for (let i=0; i<this.outSize; i++) {
+            let outNode = new NEATOutNode(currentId++, 1);
             firstGenGraph.addNode(outNode);
         }
         firstGenGraph.getInNodes().forEach((inNode,i) => {
@@ -71,7 +72,7 @@ export class NEAT {
                 let conn = new Connection(inNode, 
                                           outNode, 
                                           this.getRandomStartingWeight(), 
-                                          i+j+this.inSize+this.outSize);
+                                          currentId++);
                 firstGenGraph.addConnection(conn);
             })
         })
